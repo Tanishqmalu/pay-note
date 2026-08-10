@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>Money Manager</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- ============ LOGIN VIEW ============ -->
+  <section id="loginView" class="login-wrap hidden">
+    <div class="login-card">
+      <h1 class="brand">💰 Money Manager</h1>
+      <p class="muted">Track spending, split bills, settle up.</p>
+
+      <button id="googleSignInBtn" class="btn btn-google">
+        <span>Continue with Google</span>
+      </button>
+
+      <div class="divider"><span>or</span></div>
+
+      <form id="emailAuthForm" class="stack">
+        <input type="email" id="emailInput" placeholder="Email" autocomplete="email" required />
+        <input type="password" id="passwordInput" placeholder="Password (min 6 chars)" autocomplete="current-password" required />
+        <div class="row">
+          <button type="submit" id="loginBtn" class="btn btn-primary">Log in</button>
+          <button type="button" id="signupBtn" class="btn btn-ghost">Sign up</button>
+        </div>
+      </form>
+      <p id="authError" class="error hidden"></p>
+    </div>
+  </section>
+
+  <!-- ============ APP LOADING ============ -->
+  <div id="loadingView" class="loading">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- ============ MAIN APP ============ -->
+  <section id="appView" class="hidden">
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="logo">💰</span>
+        <strong>Money Manager</strong>
+      </div>
+      <div class="topbar-right">
+        <span id="userLabel" class="muted small"></span>
+        <button id="logoutBtn" class="btn btn-ghost small">Log out</button>
+      </div>
+    </header>
+
+    <!-- Summary cards -->
+    <div class="summary">
+      <div class="summary-card credit">
+        <span class="summary-label">Income</span>
+        <span id="totalCredit" class="summary-value">₹0</span>
+      </div>
+      <div class="summary-card debit">
+        <span class="summary-label">Expense</span>
+        <span id="totalDebit" class="summary-value">₹0</span>
+      </div>
+      <div class="summary-card balance">
+        <span class="summary-label">Balance</span>
+        <span id="totalBalance" class="summary-value">₹0</span>
+      </div>
+      <div class="summary-card owed">
+        <span class="summary-label">Owed to you</span>
+        <span id="totalOwed" class="summary-value">₹0</span>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="transactions">Transactions</button>
+      <button class="tab" data-tab="shared">Shared</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </nav>
+
+    <!-- ---- Transactions tab ---- -->
+    <div id="tab-transactions" class="tab-panel active">
+      <div class="panel-head">
+        <h2>Transactions</h2>
+        <button id="addTxnBtn" class="btn btn-primary">+ Add</button>
+      </div>
+      <div class="filters">
+        <select id="filterType">
+          <option value="all">All types</option>
+          <option value="credit">Credit</option>
+          <option value="debit">Debit</option>
+        </select>
+        <select id="filterTag"><option value="all">All tags</option></select>
+      </div>
+      <ul id="txnList" class="list"></ul>
+      <p id="txnEmpty" class="empty hidden">No transactions yet. Tap “+ Add”.</p>
+    </div>
+
+    <!-- ---- Shared expenses tab ---- -->
+    <div id="tab-shared" class="tab-panel">
+      <div class="panel-head">
+        <h2>Shared Expenses</h2>
+        <button id="addSharedBtn" class="btn btn-primary">+ Add</button>
+      </div>
+      <ul id="sharedList" class="list"></ul>
+      <p id="sharedEmpty" class="empty hidden">No shared expenses yet.</p>
+    </div>
+
+    <!-- ---- Settings tab ---- -->
+    <div id="tab-settings" class="tab-panel">
+      <div class="settings-block">
+        <h3>Payment Methods</h3>
+        <form id="methodForm" class="inline-form">
+          <input type="text" id="methodInput" placeholder="e.g. UPI, Cash, Card" />
+          <button class="btn btn-primary" type="submit">Add</button>
+        </form>
+        <div id="methodChips" class="chips"></div>
+      </div>
+      <div class="settings-block">
+        <h3>Tags</h3>
+        <form id="tagForm" class="inline-form">
+          <input type="text" id="tagInput" placeholder="e.g. Swiggy, Shopping, Meals" />
+          <button class="btn btn-primary" type="submit">Add</button>
+        </form>
+        <div id="tagChips" class="chips"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRANSACTION MODAL ============ -->
+  <div id="txnModal" class="modal hidden">
+    <div class="modal-card">
+      <h3 id="txnModalTitle">Add Transaction</h3>
+      <form id="txnForm" class="stack">
+        <input type="hidden" id="txnId" />
+        <div class="seg">
+          <label class="seg-opt"><input type="radio" name="txnType" value="debit" checked /><span>Debit (spent)</span></label>
+          <label class="seg-opt"><input type="radio" name="txnType" value="credit" /><span>Credit (received)</span></label>
+        </div>
+        <label>Amount
+          <input type="number" id="txnAmount" step="0.01" min="0" placeholder="0.00" required />
+        </label>
+        <label>Payment method
+          <select id="txnMethod"></select>
+        </label>
+        <label>Tags
+          <div id="txnTagPicker" class="chips picker"></div>
+        </label>
+        <label>Note
+          <input type="text" id="txnNote" placeholder="Optional note" />
+        </label>
+        <label>Date
+          <input type="date" id="txnDate" required />
+        </label>
+        <div class="row end">
+          <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ SHARED EXPENSE MODAL ============ -->
+  <div id="sharedModal" class="modal hidden">
+    <div class="modal-card">
+      <h3 id="sharedModalTitle">Add Shared Expense</h3>
+      <form id="sharedForm" class="stack">
+        <input type="hidden" id="sharedId" />
+        <label>Description
+          <input type="text" id="sharedDesc" placeholder="e.g. Dinner at Barbeque Nation" required />
+        </label>
+        <label>Total amount you paid
+          <input type="number" id="sharedTotal" step="0.01" min="0" placeholder="0.00" required />
+        </label>
+        <label>Date
+          <input type="date" id="sharedDate" required />
+        </label>
+        <div class="participants-head">
+          <span>People (including you)</span>
+          <button type="button" id="addParticipantBtn" class="btn btn-ghost small">+ Person</button>
+        </div>
+        <div id="participantRows" class="stack"></div>
+        <p class="hint">Split is equal by default; edit each share if needed. “You” are auto-marked settled.</p>
+        <div class="row end">
+          <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

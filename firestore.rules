@@ -1,0 +1,19 @@
+rules_version = '2';
+
+// Money Manager - Firestore Security Rules
+// Every document lives under users/{uid}/... and can only be
+// read or written by the signed-in owner of that uid.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId} {
+      // The user document itself (optional profile data).
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // All sub-collections: transactions, tags, methods, shared.
+      match /{collection}/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+}
