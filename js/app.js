@@ -6,7 +6,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import {
   getAuth, onAuthStateChanged, signOut,
   GoogleAuthProvider, signInWithPopup,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword
+  signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  updatePassword, verifyBeforeUpdateEmail,
+  EmailAuthProvider, reauthenticateWithCredential
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore, collection, doc, addDoc, setDoc, updateDoc,
@@ -79,7 +81,73 @@ $("#signupBtn").addEventListener("click", async () => {
   } catch (e) { authError(prettyAuthError(e)); }
 });
 
-$("#logoutBtn").addEventListener("click", () => signOut(auth));
+$("#logoutBtn").addEventListener("click", () => { closeDrawer(); signOut(auth); });
+
+// ---------- Side drawer ----------
+const drawer = $("#drawer");
+const drawerOverlay = $("#drawerOverlay");
+function openDrawer() { drawer.classList.add("open"); show(drawerOverlay); }
+function closeDrawer() { drawer.classList.remove("open"); hide(drawerOverlay); }
+$("#menuBtn").addEventListener("click", openDrawer);
+$("#drawerClose").addEventListener("click", closeDrawer);
+drawerOverlay.addEventListener("click", closeDrawer);
+
+function setMsg(el, text, kind) {
+  if (!text) { el.className = "msg hidden"; el.textContent = ""; return; }
+  el.textContent = text;
+  el.className = "msg " + (kind === "ok" ? "ok" : "err");
+}
+
+function populateProfile(user) {
+  const email = user.email || "—";
+  const name = user.displayName || (user.email ? user.email.split("@")[0] : "User");
+  $("#profileName").textContent = name;
+  $("#profileEmail").textContent = email;
+  $("#profileAvatar").textContent = (name.trim()[0] || "?").toUpperCase();
+  const providers = (user.providerData || []).map((p) => p.providerId);
+  const isPassword = providers.includes("password");
+  const isGoogle = providers.includes("google.com");
+  $("#profileProvider").textContent =
+    isPassword ? "Email / password account" : (isGoogle ? "Signed in with Google" : "");
+  // Only email/password accounts can change email & password here.
+  if (isPassword) { show($("#passwordAuthArea")); hide($("#googleAuthNote")); }
+  else { hide($("#passwordAuthArea")); show($("#googleAuthNote")); }
+}
+
+// Update email (sends a verification link to the new address)
+$("#emailUpdateForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = $("#emailUpdateMsg");
+  setMsg(msg, "");
+  const newEmail = $("#newEmailInput").value.trim();
+  const curPass = $("#emailCurPass").value;
+  try {
+    const user = auth.currentUser;
+    const cred = EmailAuthProvider.credential(user.email, curPass);
+    await reauthenticateWithCredential(user, cred);
+    await verifyBeforeUpdateEmail(user, newEmail);
+    setMsg(msg, `Verification link sent to ${newEmail}. Open it to confirm, then log in again.`, "ok");
+    $("#emailUpdateForm").reset();
+  } catch (err) { setMsg(msg, prettyAuthError(err), "err"); }
+});
+
+// Update password (requires current password to re-authenticate)
+$("#passwordUpdateForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = $("#passwordUpdateMsg");
+  setMsg(msg, "");
+  const cur = $("#curPassInput").value;
+  const next = $("#newPassInput").value;
+  if (next.length < 6) { setMsg(msg, "New password must be at least 6 characters.", "err"); return; }
+  try {
+    const user = auth.currentUser;
+    const cred = EmailAuthProvider.credential(user.email, cur);
+    await reauthenticateWithCredential(user, cred);
+    await updatePassword(user, next);
+    setMsg(msg, "Password updated successfully.", "ok");
+    $("#passwordUpdateForm").reset();
+  } catch (err) { setMsg(msg, prettyAuthError(err), "err"); }
+});
 
 function prettyAuthError(e) {
   const c = (e && e.code) || "";
@@ -92,6 +160,9 @@ function prettyAuthError(e) {
     "auth/weak-password": "Password must be at least 6 characters.",
     "auth/popup-closed-by-user": "Sign-in popup was closed.",
     "auth/operation-not-allowed": "This sign-in method isn't enabled in Firebase console.",
+    "auth/requires-recent-login": "Please re-enter your current password and try again.",
+    "auth/missing-password": "Please enter your current password.",
+    "auth/too-many-requests": "Too many attempts. Wait a bit and try again.",
   };
   return map[c] || (e && e.message) || "Something went wrong.";
 }
@@ -99,11 +170,12 @@ function prettyAuthError(e) {
 onAuthStateChanged(auth, (user) => {
   if (user) {
     uid = user.uid;
-    $("#userLabel").textContent = user.email || user.displayName || "Signed in";
+    populateProfile(user);
     hide($("#loginView")); hide($("#loadingView")); show($("#appView"));
     startListeners();
   } else {
     uid = null;
+    closeDrawer();
     stopListeners();
     hide($("#loadingView")); hide($("#appView")); show($("#loginView"));
   }
@@ -141,10 +213,9 @@ function stopListeners() {
 //  SUMMARY
 // ============================================================
 function renderSummary() {
-  let credit = 0, debit = 0;
+  let debit = 0;
   for (const t of transactions) {
-    if (t.type === "credit") credit += Number(t.amount) || 0;
-    else debit += Number(t.amount) || 0;
+    debit += Number(t.amount) || 0;
   }
   let owed = 0;
   for (const s of shared) {
@@ -152,9 +223,7 @@ function renderSummary() {
       if (!p.isMe && !p.returned) owed += Number(p.share) || 0;
     }
   }
-  $("#totalCredit").textContent = money(credit);
   $("#totalDebit").textContent = money(debit);
-  $("#totalBalance").textContent = money(credit - debit);
   $("#totalOwed").textContent = money(owed);
 }
 
@@ -254,7 +323,6 @@ function renderMethodSelect() {
 const txnModal = $("#txnModal");
 
 $("#addTxnBtn").addEventListener("click", () => openTxnModal());
-$("#filterType").addEventListener("change", renderTransactions);
 $("#filterTag").addEventListener("change", renderTransactions);
 
 let selectedTxnTags = new Set();
@@ -284,8 +352,6 @@ function openTxnModal(txn = null) {
   $("#txnAmount").value = txn ? txn.amount : "";
   $("#txnNote").value = txn ? (txn.note || "") : "";
   $("#txnDate").value = txn ? txn.date : todayStr();
-  const type = txn ? txn.type : "debit";
-  $$('input[name="txnType"]').forEach((r) => { r.checked = r.value === type; });
   renderMethodSelect();
   if (txn && txn.method) $("#txnMethod").value = txn.method;
   renderTagPicker();
@@ -296,7 +362,6 @@ $("#txnForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const id = $("#txnId").value;
   const data = {
-    type: $$('input[name="txnType"]:checked')[0].value,
     amount: Number($("#txnAmount").value) || 0,
     method: $("#txnMethod").value || "",
     tags: Array.from(selectedTxnTags),
@@ -314,12 +379,10 @@ $("#txnForm").addEventListener("submit", async (e) => {
 });
 
 function renderTransactions() {
-  const typeF = $("#filterType").value;
   const tagF = $("#filterTag").value;
   const list = $("#txnList");
   list.innerHTML = "";
   const rows = transactions.filter((t) => {
-    if (typeF !== "all" && t.type !== typeF) return false;
     if (tagF !== "all" && !(t.tags || []).includes(tagF)) return false;
     return true;
   });
@@ -332,10 +395,10 @@ function renderTransactions() {
     li.innerHTML = `
       <div class="item-row">
         <div class="item-main">
-          <span class="item-title">${escapeHtml(t.note || (t.type === "credit" ? "Income" : "Expense"))}</span>
+          <span class="item-title">${escapeHtml(t.note || "Expense")}</span>
           <span class="item-sub">${methodPill}${tagPills}<span>${escapeHtml(t.date || "")}</span></span>
         </div>
-        <span class="amount ${t.type}">${t.type === "credit" ? "+" : "−"}${money(t.amount)}</span>
+        <span class="amount debit">${money(t.amount)}</span>
       </div>
       <div class="item-actions">
         <button class="btn btn-ghost small" data-edit>Edit</button>

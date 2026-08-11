@@ -41,34 +41,62 @@
   <section id="appView" class="hidden">
     <header class="topbar">
       <div class="topbar-left">
+        <button id="menuBtn" class="icon-btn" aria-label="Open menu">&#9776;</button>
         <span class="logo">💰</span>
         <strong>Money Manager</strong>
       </div>
-      <div class="topbar-right">
-        <span id="userLabel" class="muted small"></span>
-        <button id="logoutBtn" class="btn btn-ghost small">Log out</button>
-      </div>
     </header>
 
-    <!-- Summary cards -->
-    <div class="summary">
-      <div class="summary-card credit">
-        <span class="summary-label">Income</span>
-        <span id="totalCredit" class="summary-value">₹0</span>
+    <!-- ===== Side drawer (account) ===== -->
+    <div id="drawerOverlay" class="drawer-overlay hidden"></div>
+    <aside id="drawer" class="drawer">
+      <div class="drawer-head">
+        <span class="drawer-title">Account</span>
+        <button id="drawerClose" class="icon-btn" aria-label="Close menu">&times;</button>
       </div>
-      <div class="summary-card debit">
-        <span class="summary-label">Expense</span>
-        <span id="totalDebit" class="summary-value">₹0</span>
+
+      <div class="drawer-section">
+        <span class="drawer-label">Profile</span>
+        <div class="profile-card">
+          <div id="profileAvatar" class="avatar">?</div>
+          <div class="profile-meta">
+            <div id="profileName" class="profile-name">—</div>
+            <div id="profileEmail" class="muted small">—</div>
+            <div id="profileProvider" class="muted small"></div>
+          </div>
+        </div>
       </div>
-      <div class="summary-card balance">
-        <span class="summary-label">Balance</span>
-        <span id="totalBalance" class="summary-value">₹0</span>
+
+      <div id="passwordAuthArea">
+        <div class="drawer-section">
+          <span class="drawer-label">Update email</span>
+          <form id="emailUpdateForm" class="stack">
+            <input type="email" id="newEmailInput" placeholder="New email" required />
+            <input type="password" id="emailCurPass" placeholder="Current password" required />
+            <button class="btn btn-primary" type="submit">Send verification link</button>
+          </form>
+          <p id="emailUpdateMsg" class="msg hidden"></p>
+        </div>
+
+        <div class="drawer-section">
+          <span class="drawer-label">Update password</span>
+          <form id="passwordUpdateForm" class="stack">
+            <input type="password" id="curPassInput" placeholder="Current password" required />
+            <input type="password" id="newPassInput" placeholder="New password (min 6 chars)" required />
+            <button class="btn btn-primary" type="submit">Update password</button>
+          </form>
+          <p id="passwordUpdateMsg" class="msg hidden"></p>
+        </div>
       </div>
-      <div class="summary-card owed">
-        <span class="summary-label">Owed to you</span>
-        <span id="totalOwed" class="summary-value">₹0</span>
+
+      <div id="googleAuthNote" class="drawer-section hidden">
+        <p class="muted small">You're signed in with Google. Manage your email and password in your Google Account settings.</p>
       </div>
-    </div>
+
+      <div class="drawer-section">
+        <button id="logoutBtn" class="btn btn-ghost full">Log out</button>
+      </div>
+    </aside>
 
     <!-- Tabs -->
     <nav class="tabs">
@@ -84,11 +112,6 @@
         <button id="addTxnBtn" class="btn btn-primary">+ Add</button>
       </div>
       <div class="filters">
-        <select id="filterType">
-          <option value="all">All types</option>
-          <option value="credit">Credit</option>
-          <option value="debit">Debit</option>
-        </select>
         <select id="filterTag"><option value="all">All tags</option></select>
       </div>
       <ul id="txnList" class="list"></ul>
@@ -124,6 +147,22 @@
         <div id="tagChips" class="chips"></div>
       </div>
     </div>
+
+    <!-- ===== Sticky bottom bar ===== -->
+    <footer class="app-footer">
+      <div class="foot-item">
+        <span class="foot-label">Total spent</span>
+        <span id="totalDebit" class="foot-value debit">₹0</span>
+      </div>
+      <div class="foot-item">
+        <span class="foot-label">Owed to you</span>
+        <span id="totalOwed" class="foot-value owed">₹0</span>
+      </div>
+      <div class="foot-item">
+        <span class="foot-label">Summary</span>
+        <span id="footSummary" class="foot-value">—</span>
+      </div>
+    </footer>
   </section>
 
   <!-- ============ TRANSACTION MODAL ============ -->
@@ -132,10 +171,6 @@
       <h3 id="txnModalTitle">Add Transaction</h3>
       <form id="txnForm" class="stack">
         <input type="hidden" id="txnId" />
-        <div class="seg">
-          <label class="seg-opt"><input type="radio" name="txnType" value="debit" checked /><span>Debit (spent)</span></label>
-          <label class="seg-opt"><input type="radio" name="txnType" value="credit" /><span>Credit (received)</span></label>
-        </div>
         <label>Amount
           <input type="number" id="txnAmount" step="0.01" min="0" placeholder="0.00" required />
         </label>
