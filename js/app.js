@@ -392,6 +392,12 @@ function renderTransactions() {
     li.className = "item";
     const tagPills = (t.tags || []).map((x) => `<span class="tag-pill">${escapeHtml(x)}</span>`).join("");
     const methodPill = t.method ? `<span class="method-pill">${escapeHtml(t.method)}</span>` : "";
+    const actions = t.fromShared
+      ? `<div class="item-actions"><span class="muted small">From a shared expense — edit it in the Shared tab.</span></div>`
+      : `<div class="item-actions">
+          <button class="btn btn-ghost small" data-edit>Edit</button>
+          <button class="btn btn-ghost small" data-del>Delete</button>
+        </div>`;
     li.innerHTML = `
       <div class="item-row">
         <div class="item-main">
@@ -400,14 +406,13 @@ function renderTransactions() {
         </div>
         <span class="amount debit">${money(t.amount)}</span>
       </div>
-      <div class="item-actions">
-        <button class="btn btn-ghost small" data-edit>Edit</button>
-        <button class="btn btn-ghost small" data-del>Delete</button>
-      </div>`;
-    li.querySelector("[data-edit]").addEventListener("click", () => openTxnModal(t));
-    li.querySelector("[data-del]").addEventListener("click", () => {
-      if (confirm("Delete this transaction?")) deleteDoc(docRef("transactions", t.id));
-    });
+      ${actions}`;
+    if (!t.fromShared) {
+      li.querySelector("[data-edit]").addEventListener("click", () => openTxnModal(t));
+      li.querySelector("[data-del]").addEventListener("click", () => {
+        if (confirm("Delete this transaction?")) deleteDoc(docRef("transactions", t.id));
+      });
+    }
     list.appendChild(li);
   }
 }
@@ -490,14 +495,57 @@ $("#sharedForm").addEventListener("submit", async (e) => {
     participants,
     updatedAt: serverTimestamp(),
   };
+
+  // Model A: your own share is a real expense.
+  const mine = participants.find((p) => p.isMe);
+  const myShare = mine ? (Number(mine.share) || 0) : 0;
+
   if (id) {
     await updateDoc(docRef("shared", id), data);
+    const existing = shared.find((s) => s.id === id);
+    await syncShareTxn(id, existing && existing.linkedTxnId, myShare, data.description, data.date);
   } else {
     data.createdAt = serverTimestamp();
-    await addDoc(col("shared"), data);
+    const sharedRef = await addDoc(col("shared"), data);
+    await syncShareTxn(sharedRef.id, null, myShare, data.description, data.date);
   }
   hide(sharedModal);
 });
+
+// Keep the linked "your share" expense transaction in sync with a shared expense.
+function shareTxnPayload(sharedId, myShare, description, date) {
+  return {
+    amount: myShare,
+    method: "",
+    tags: ["Shared"],
+    note: "Shared: " + (description || "expense"),
+    date: date || todayStr(),
+    fromShared: true,
+    sharedId,
+    updatedAt: serverTimestamp(),
+  };
+}
+
+async function syncShareTxn(sharedId, linkedTxnId, myShare, description, date) {
+  // No share to record -> remove any existing linked transaction.
+  if (!(myShare > 0)) {
+    if (linkedTxnId) {
+      try { await deleteDoc(docRef("transactions", linkedTxnId)); } catch (_) {}
+      try { await updateDoc(docRef("shared", sharedId), { linkedTxnId: null }); } catch (_) {}
+    }
+    return;
+  }
+  const payload = shareTxnPayload(sharedId, myShare, description, date);
+  if (linkedTxnId) {
+    try {
+      await updateDoc(docRef("transactions", linkedTxnId), payload);
+      return;
+    } catch (_) { /* linked txn was deleted; recreate below */ }
+  }
+  payload.createdAt = serverTimestamp();
+  const ref = await addDoc(col("transactions"), payload);
+  await updateDoc(docRef("shared", sharedId), { linkedTxnId: ref.id });
+}
 
 function renderShared() {
   const list = $("#sharedList");
@@ -547,8 +595,10 @@ function renderShared() {
       });
     });
     li.querySelector("[data-edit]").addEventListener("click", () => openSharedModal(s));
-    li.querySelector("[data-del]").addEventListener("click", () => {
-      if (confirm("Delete this shared expense?")) deleteDoc(docRef("shared", s.id));
+    li.querySelector("[data-del]").addEventListener("click", async () => {
+      if (!confirm("Delete this shared expense? Your linked expense entry will be removed too.")) return;
+      if (s.linkedTxnId) { try { await deleteDoc(docRef("transactions", s.linkedTxnId)); } catch (_) {} }
+      await deleteDoc(docRef("shared", s.id));
     });
     list.appendChild(li);
   }
