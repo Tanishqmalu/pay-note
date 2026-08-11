@@ -442,6 +442,7 @@ function addParticipantRow(p = null, isMe = false) {
 
 function openSharedModal(exp = null) {
   $("#sharedForm").reset();
+  setMsg($("#sharedMsg"), "");
   $("#participantRows").innerHTML = "";
   $("#sharedId").value = exp ? exp.id : "";
   $("#sharedModalTitle").textContent = exp ? "Edit Shared Expense" : "Add Shared Expense";
@@ -480,13 +481,29 @@ $("#sharedForm").addEventListener("submit", async (e) => {
 
   if (!participants.length) { alert("Add at least one person."); return; }
 
-  // Equal split for any blank shares
+  // Equal split for any blank shares (last blank absorbs rounding remainder)
   const blanks = participants.filter((p) => p.share === null);
   if (blanks.length) {
     const assigned = participants.reduce((s, p) => s + (p.share || 0), 0);
     const per = Math.round(((total - assigned) / blanks.length) * 100) / 100;
     blanks.forEach((p) => { p.share = per > 0 ? per : 0; });
+    // correct rounding so shares sum exactly to the total
+    const sumNow = participants.reduce((s, p) => s + (Number(p.share) || 0), 0);
+    const drift = Math.round((total - sumNow) * 100) / 100;
+    if (drift !== 0) {
+      const lastBlank = blanks[blanks.length - 1];
+      lastBlank.share = Math.round(((lastBlank.share || 0) + drift) * 100) / 100;
+    }
   }
+
+  // Validate: everyone's shares must add up to the total paid.
+  const sumShares = Math.round(participants.reduce((s, p) => s + (Number(p.share) || 0), 0) * 100) / 100;
+  if (Math.abs(sumShares - total) > 0.01) {
+    setMsg($("#sharedMsg"),
+      `Shares add up to ${money(sumShares)}, but the total is ${money(total)}. Please make them match.`, "err");
+    return;
+  }
+  setMsg($("#sharedMsg"), "");
 
   const data = {
     description: $("#sharedDesc").value.trim(),
