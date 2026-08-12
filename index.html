@@ -14,8 +14,9 @@
       <h1 class="brand">💰 Money Manager</h1>
       <p class="muted">Track spending, split bills, settle up.</p>
 
-      <button id="googleSignInBtn" class="btn btn-google">
-        <span>Continue with Google</span>
+      <button id="googleSignInBtn" class="btn btn-google btn-load">
+        <span class="btn-label">Continue with Google</span>
+        <span class="btn-spinner" aria-hidden="true"></span>
       </button>
 
       <div class="divider"><span>or</span></div>
@@ -24,8 +25,14 @@
         <input type="email" id="emailInput" placeholder="Email" autocomplete="email" required />
         <input type="password" id="passwordInput" placeholder="Password (min 6 chars)" autocomplete="current-password" required />
         <div class="row">
-          <button type="submit" id="loginBtn" class="btn btn-primary">Log in</button>
-          <button type="button" id="signupBtn" class="btn btn-ghost">Sign up</button>
+          <button type="submit" id="loginBtn" class="btn btn-primary btn-load">
+            <span class="btn-label">Log in</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+          <button type="button" id="signupBtn" class="btn btn-ghost btn-load">
+            <span class="btn-label">Sign up</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
         </div>
       </form>
       <p id="authError" class="error hidden"></p>

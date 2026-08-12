@@ -56,29 +56,38 @@ function authError(msg) {
 
 $("#googleSignInBtn").addEventListener("click", async () => {
   authError("");
+  const btn = $("#googleSignInBtn");
+  setLoading(btn, true);
   try {
     await signInWithPopup(auth, new GoogleAuthProvider());
   } catch (e) { authError(prettyAuthError(e)); }
+  finally { setLoading(btn, false); }
 });
 
 $("#emailAuthForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   authError("");
+  const btn = $("#loginBtn");
   const email = $("#emailInput").value.trim();
   const pass = $("#passwordInput").value;
+  setLoading(btn, true);
   try {
     await signInWithEmailAndPassword(auth, email, pass);
   } catch (e) { authError(prettyAuthError(e)); }
+  finally { setLoading(btn, false); }
 });
 
 $("#signupBtn").addEventListener("click", async () => {
   authError("");
+  const btn = $("#signupBtn");
   const email = $("#emailInput").value.trim();
   const pass = $("#passwordInput").value;
   if (pass.length < 6) { authError("Password must be at least 6 characters."); return; }
+  setLoading(btn, true);
   try {
     await createUserWithEmailAndPassword(auth, email, pass);
   } catch (e) { authError(prettyAuthError(e)); }
+  finally { setLoading(btn, false); }
 });
 
 $("#logoutBtn").addEventListener("click", () => { closeDrawer(); signOut(auth); });
@@ -99,7 +108,7 @@ function setMsg(el, text, kind) {
 }
 
 function setLoading(btn, on) {
-  btn.classList.toggle("loading", on);
+  btn.classList.toggle("is-loading", on);
   btn.disabled = on;
 }
 

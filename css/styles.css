@@ -342,8 +342,9 @@ label input, label select { color: var(--text); }
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
-.btn.loading { pointer-events: none; opacity: .85; }
-.btn.loading .btn-spinner { display: inline-block; }
+.btn.is-loading { pointer-events: none; opacity: .85; }
+.btn.is-loading .btn-spinner { display: inline-block; }
+.btn-google .btn-spinner { border-color: rgba(0,0,0,.25); border-top-color: #1f1f1f; }
 
 /* ---------- Sticky bottom bar ---------- */
 .app-footer {
