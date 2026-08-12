@@ -317,6 +317,34 @@ label input, label select { color: var(--text); }
 .msg.ok { color: var(--credit); }
 .msg.err { color: var(--debit); }
 
+/* ---------- Accordion (details/summary) ---------- */
+.acc > summary {
+  cursor: pointer; list-style: none;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted);
+}
+.acc > summary::-webkit-details-marker { display: none; }
+.acc > summary::after {
+  content: "\25BE"; /* ▾ */
+  transition: transform .2s ease; color: var(--muted);
+}
+.acc[open] > summary::after { transform: rotate(180deg); }
+.acc-body { margin-top: 12px; }
+
+/* ---------- Button loader ---------- */
+.btn-load { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.btn-spinner {
+  display: none;
+  width: 15px; height: 15px;
+  border: 2px solid rgba(255,255,255,.45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+.btn.loading { pointer-events: none; opacity: .85; }
+.btn.loading .btn-spinner { display: inline-block; }
+
 /* ---------- Sticky bottom bar ---------- */
 .app-footer {
   position: fixed; left: 0; right: 0; bottom: 0;

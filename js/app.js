@@ -98,6 +98,11 @@ function setMsg(el, text, kind) {
   el.className = "msg " + (kind === "ok" ? "ok" : "err");
 }
 
+function setLoading(btn, on) {
+  btn.classList.toggle("loading", on);
+  btn.disabled = on;
+}
+
 function populateProfile(user) {
   const email = user.email || "—";
   const name = user.displayName || (user.email ? user.email.split("@")[0] : "User");
@@ -118,9 +123,11 @@ function populateProfile(user) {
 $("#emailUpdateForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const msg = $("#emailUpdateMsg");
+  const btn = $("#emailUpdateBtn");
   setMsg(msg, "");
   const newEmail = $("#newEmailInput").value.trim();
   const curPass = $("#emailCurPass").value;
+  setLoading(btn, true);
   try {
     const user = auth.currentUser;
     const cred = EmailAuthProvider.credential(user.email, curPass);
@@ -129,16 +136,19 @@ $("#emailUpdateForm").addEventListener("submit", async (e) => {
     setMsg(msg, `Verification link sent to ${newEmail}. Open it to confirm, then log in again.`, "ok");
     $("#emailUpdateForm").reset();
   } catch (err) { setMsg(msg, prettyAuthError(err), "err"); }
+  finally { setLoading(btn, false); }
 });
 
 // Update password (requires current password to re-authenticate)
 $("#passwordUpdateForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const msg = $("#passwordUpdateMsg");
+  const btn = $("#passwordUpdateBtn");
   setMsg(msg, "");
   const cur = $("#curPassInput").value;
   const next = $("#newPassInput").value;
   if (next.length < 6) { setMsg(msg, "New password must be at least 6 characters.", "err"); return; }
+  setLoading(btn, true);
   try {
     const user = auth.currentUser;
     const cred = EmailAuthProvider.credential(user.email, cur);
@@ -147,6 +157,7 @@ $("#passwordUpdateForm").addEventListener("submit", async (e) => {
     setMsg(msg, "Password updated successfully.", "ok");
     $("#passwordUpdateForm").reset();
   } catch (err) { setMsg(msg, prettyAuthError(err), "err"); }
+  finally { setLoading(btn, false); }
 });
 
 function prettyAuthError(e) {

@@ -69,23 +69,33 @@
 
       <div id="passwordAuthArea">
         <div class="drawer-section">
-          <span class="drawer-label">Update email</span>
-          <form id="emailUpdateForm" class="stack">
-            <input type="email" id="newEmailInput" placeholder="New email" required />
-            <input type="password" id="emailCurPass" placeholder="Current password" required />
-            <button class="btn btn-primary" type="submit">Send verification link</button>
-          </form>
-          <p id="emailUpdateMsg" class="msg hidden"></p>
+          <details class="acc">
+            <summary>Update email</summary>
+            <form id="emailUpdateForm" class="stack acc-body">
+              <input type="email" id="newEmailInput" placeholder="New email" required />
+              <input type="password" id="emailCurPass" placeholder="Current password" required />
+              <button class="btn btn-primary btn-load" type="submit" id="emailUpdateBtn">
+                <span class="btn-label">Send verification link</span>
+                <span class="btn-spinner" aria-hidden="true"></span>
+              </button>
+            </form>
+            <p id="emailUpdateMsg" class="msg hidden"></p>
+          </details>
         </div>
 
         <div class="drawer-section">
-          <span class="drawer-label">Update password</span>
-          <form id="passwordUpdateForm" class="stack">
-            <input type="password" id="curPassInput" placeholder="Current password" required />
-            <input type="password" id="newPassInput" placeholder="New password (min 6 chars)" required />
-            <button class="btn btn-primary" type="submit">Update password</button>
-          </form>
-          <p id="passwordUpdateMsg" class="msg hidden"></p>
+          <details class="acc">
+            <summary>Update password</summary>
+            <form id="passwordUpdateForm" class="stack acc-body">
+              <input type="password" id="curPassInput" placeholder="Current password" required />
+              <input type="password" id="newPassInput" placeholder="New password (min 6 chars)" required />
+              <button class="btn btn-primary btn-load" type="submit" id="passwordUpdateBtn">
+                <span class="btn-label">Update password</span>
+                <span class="btn-spinner" aria-hidden="true"></span>
+              </button>
+            </form>
+            <p id="passwordUpdateMsg" class="msg hidden"></p>
+          </details>
         </div>
       </div>
 
