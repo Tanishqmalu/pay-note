@@ -153,8 +153,30 @@ label input, label select { color: var(--text); }
 
 .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .panel-head h2 { margin: 0; font-size: 1.15rem; }
+.head-actions { display: flex; align-items: center; gap: 8px; }
+.btn.icon-only { display: inline-flex; align-items: center; justify-content: center; padding: 9px 11px; }
+.btn.icon-only svg { display: block; }
+#filterBtn.active { color: #fff; background: var(--primary); border-color: var(--primary); }
 .filters { display: flex; gap: 10px; margin-bottom: 14px; }
 .filters select { flex: 1; }
+
+/* ---- Filter panel ---- */
+.filters-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 14px;
+  display: flex; flex-direction: column; gap: 18px;
+}
+.filter-group { display: flex; flex-direction: column; gap: 8px; }
+.filter-label {
+  font-size: .72rem; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.date-row { display: flex; flex-direction: column; gap: 10px; }
+.date-field input[type="date"] { width: 100%; min-width: 0; }
+.list-count { margin: 0 0 10px; }
 
 /* ---------- Lists ---------- */
 .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }

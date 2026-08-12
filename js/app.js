@@ -323,7 +323,33 @@ function renderMethodSelect() {
 const txnModal = $("#txnModal");
 
 $("#addTxnBtn").addEventListener("click", () => openTxnModal());
-$("#filterTag").addEventListener("change", renderTransactions);
+$("#filterBtn").addEventListener("click", () => $("#txnFilters").classList.toggle("hidden"));
+
+// ---- Filters: tag + date range, applied only on "Apply" ----
+let appliedFilters = { tag: "all", from: "", to: "" };
+
+function updateFilterActive() {
+  const on = appliedFilters.tag !== "all" || !!appliedFilters.from || !!appliedFilters.to;
+  $("#filterBtn").classList.toggle("active", on);
+}
+
+$("#applyFiltersBtn").addEventListener("click", () => {
+  appliedFilters = {
+    tag: $("#filterTag").value,
+    from: $("#dateFrom").value,
+    to: $("#dateTo").value,
+  };
+  updateFilterActive();
+  renderTransactions();
+});
+$("#clearFiltersBtn").addEventListener("click", () => {
+  $("#filterTag").value = "all";
+  $("#dateFrom").value = "";
+  $("#dateTo").value = "";
+  appliedFilters = { tag: "all", from: "", to: "" };
+  updateFilterActive();
+  renderTransactions();
+});
 
 let selectedTxnTags = new Set();
 
@@ -379,14 +405,18 @@ $("#txnForm").addEventListener("submit", async (e) => {
 });
 
 function renderTransactions() {
-  const tagF = $("#filterTag").value;
   const list = $("#txnList");
   list.innerHTML = "";
   const rows = transactions.filter((t) => {
-    if (tagF !== "all" && !(t.tags || []).includes(tagF)) return false;
+    if (appliedFilters.tag !== "all" && !(t.tags || []).includes(appliedFilters.tag)) return false;
+    if (appliedFilters.from && (t.date || "") < appliedFilters.from) return false;
+    if (appliedFilters.to && (t.date || "") > appliedFilters.to) return false;
     return true;
   });
   $("#txnEmpty").classList.toggle("hidden", rows.length > 0);
+  $("#txnCount").textContent = transactions.length
+    ? `Showing ${rows.length} of ${transactions.length} transactions`
+    : "";
   for (const t of rows) {
     const li = document.createElement("li");
     li.className = "item";

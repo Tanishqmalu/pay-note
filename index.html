@@ -109,11 +109,35 @@
     <div id="tab-transactions" class="tab-panel active">
       <div class="panel-head">
         <h2>Transactions</h2>
-        <button id="addTxnBtn" class="btn btn-primary">+ Add</button>
+        <div class="head-actions">
+          <button id="filterBtn" class="btn btn-ghost icon-only" aria-label="Filter by tag" title="Filter by tag">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          </button>
+          <button id="addTxnBtn" class="btn btn-primary">+ Add</button>
+        </div>
       </div>
-      <div class="filters">
-        <select id="filterTag"><option value="all">All tags</option></select>
+      <div id="txnFilters" class="filters-panel hidden">
+        <div class="filter-group">
+          <span class="filter-label">Filter by tag</span>
+          <select id="filterTag"><option value="all">All tags</option></select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Date range</span>
+          <div class="date-row">
+            <label class="date-field">From
+              <input type="date" id="dateFrom" />
+            </label>
+            <label class="date-field">To
+              <input type="date" id="dateTo" />
+            </label>
+          </div>
+        </div>
+        <div class="row">
+          <button id="applyFiltersBtn" type="button" class="btn btn-primary">Apply</button>
+          <button id="clearFiltersBtn" type="button" class="btn btn-ghost">Clear filters</button>
+        </div>
       </div>
+      <p id="txnCount" class="muted small list-count"></p>
       <ul id="txnList" class="list"></ul>
       <p id="txnEmpty" class="empty hidden">No transactions yet. Tap “+ Add”.</p>
     </div>
