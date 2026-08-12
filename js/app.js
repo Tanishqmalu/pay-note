@@ -213,7 +213,7 @@ function startListeners() {
   }));
   unsub.push(onSnapshot(query(col("tags"), orderBy("name")), (snap) => {
     tags = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    renderTags(); renderTagFilter(); renderTagPicker();
+    renderTags(); renderTagFilter(); renderTagPicker(); renderSharedTagPicker();
   }));
   unsub.push(onSnapshot(query(col("methods"), orderBy("name")), (snap) => {
     methods = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -235,15 +235,44 @@ function stopListeners() {
 }
 
 // ============================================================
+//  FILTER HELPERS (drive both the list and the footer totals)
+// ============================================================
+function currentMonthRange() {
+  const now = new Date();
+  const y = now.getFullYear(), mo = now.getMonth();
+  const pad = (n) => String(n).padStart(2, "0");
+  const first = `${y}-${pad(mo + 1)}-01`;
+  const lastDay = new Date(y, mo + 1, 0).getDate();
+  const last = `${y}-${pad(mo + 1)}-${pad(lastDay)}`;
+  return { from: first, to: last };
+}
+function withinAppliedDates(d) {
+  const date = d || "";
+  if (appliedFilters.from && date < appliedFilters.from) return false;
+  if (appliedFilters.to && date > appliedFilters.to) return false;
+  return true;
+}
+function passesFilters(t) {
+  if (appliedFilters.tag !== "all" && !(t.tags || []).includes(appliedFilters.tag)) return false;
+  return withinAppliedDates(t.date);
+}
+function sharedPassesFilters(s) {
+  if (appliedFilters.tag !== "all" && !(s.tags || []).includes(appliedFilters.tag)) return false;
+  return withinAppliedDates(s.date);
+}
+function refreshViews() { renderTransactions(); renderSummary(); }
+
+// ============================================================
 //  SUMMARY
 // ============================================================
 function renderSummary() {
   let debit = 0;
   for (const t of transactions) {
-    debit += Number(t.amount) || 0;
+    if (passesFilters(t)) debit += Number(t.amount) || 0;
   }
   let owed = 0;
   for (const s of shared) {
+    if (!sharedPassesFilters(s)) continue;
     for (const p of (s.participants || [])) {
       if (!p.isMe && !p.returned) owed += Number(p.share) || 0;
     }
@@ -399,11 +428,24 @@ $("#addTxnBtn").addEventListener("click", () => openTxnModal());
 $("#filterBtn").addEventListener("click", () => $("#txnFilters").classList.toggle("hidden"));
 
 // ---- Filters: tag + date range, applied only on "Apply" ----
-let appliedFilters = { tag: "all", from: "", to: "" };
+let appliedFilters = { tag: "all", ...currentMonthRange() };
 
 function updateFilterActive() {
-  const on = appliedFilters.tag !== "all" || !!appliedFilters.from || !!appliedFilters.to;
-  $("#filterBtn").classList.toggle("active", on);
+  const m = currentMonthRange();
+  const isDefault = appliedFilters.tag === "all"
+    && appliedFilters.from === m.from && appliedFilters.to === m.to;
+  $("#filterBtn").classList.toggle("active", !isDefault);
+}
+
+// Reset to the default "this month" view.
+function setMonthFilter() {
+  const m = currentMonthRange();
+  $("#filterTag").value = "all";
+  $("#dateFrom").value = m.from;
+  $("#dateTo").value = m.to;
+  appliedFilters = { tag: "all", from: m.from, to: m.to };
+  updateFilterActive();
+  refreshViews();
 }
 
 $("#applyFiltersBtn").addEventListener("click", () => {
@@ -413,16 +455,9 @@ $("#applyFiltersBtn").addEventListener("click", () => {
     to: $("#dateTo").value,
   };
   updateFilterActive();
-  renderTransactions();
+  refreshViews();
 });
-$("#clearFiltersBtn").addEventListener("click", () => {
-  $("#filterTag").value = "all";
-  $("#dateFrom").value = "";
-  $("#dateTo").value = "";
-  appliedFilters = { tag: "all", from: "", to: "" };
-  updateFilterActive();
-  renderTransactions();
-});
+$("#clearFiltersBtn").addEventListener("click", setMonthFilter);
 
 let selectedTxnTags = new Set();
 
@@ -480,15 +515,10 @@ $("#txnForm").addEventListener("submit", async (e) => {
 function renderTransactions() {
   const list = $("#txnList");
   list.innerHTML = "";
-  const rows = transactions.filter((t) => {
-    if (appliedFilters.tag !== "all" && !(t.tags || []).includes(appliedFilters.tag)) return false;
-    if (appliedFilters.from && (t.date || "") < appliedFilters.from) return false;
-    if (appliedFilters.to && (t.date || "") > appliedFilters.to) return false;
-    return true;
-  });
+  const rows = transactions.filter(passesFilters);
   $("#txnEmpty").classList.toggle("hidden", rows.length > 0);
-  $("#txnCount").textContent = transactions.length
-    ? `Showing ${rows.length} of ${transactions.length} transactions`
+  $("#txnCount").textContent = rows.length
+    ? `Showing ${rows.length} transaction${rows.length === 1 ? "" : "s"}`
     : "";
   for (const t of rows) {
     const li = document.createElement("li");
@@ -543,6 +573,25 @@ function addParticipantRow(p = null, isMe = false) {
   wrap.appendChild(row);
 }
 
+let selectedSharedTags = new Set();
+
+function renderSharedTagPicker() {
+  const box = $("#sharedTagPicker");
+  box.innerHTML = "";
+  if (!tags.length) { box.innerHTML = '<span class="muted small">Add tags in Settings first.</span>'; return; }
+  for (const t of tags) {
+    const chip = document.createElement("span");
+    chip.className = "chip" + (selectedSharedTags.has(t.name) ? " selected" : "");
+    chip.textContent = t.name;
+    chip.addEventListener("click", () => {
+      if (selectedSharedTags.has(t.name)) selectedSharedTags.delete(t.name);
+      else selectedSharedTags.add(t.name);
+      chip.classList.toggle("selected");
+    });
+    box.appendChild(chip);
+  }
+}
+
 function openSharedModal(exp = null) {
   $("#sharedForm").reset();
   setMsg($("#sharedMsg"), "");
@@ -552,6 +601,8 @@ function openSharedModal(exp = null) {
   $("#sharedDesc").value = exp ? exp.description : "";
   $("#sharedTotal").value = exp ? exp.total : "";
   $("#sharedDate").value = exp ? exp.date : todayStr();
+  selectedSharedTags = new Set(exp && exp.tags ? exp.tags : []);
+  renderSharedTagPicker();
 
   if (exp && exp.participants && exp.participants.length) {
     for (const p of exp.participants) addParticipantRow(p, !!p.isMe);
@@ -611,11 +662,13 @@ $("#sharedForm").addEventListener("submit", async (e) => {
   // Remember any new friend names for future autocomplete.
   rememberPeople(participants);
 
+  const sharedTags = Array.from(new Set(["Shared", ...selectedSharedTags]));
   const data = {
     description: $("#sharedDesc").value.trim(),
     total,
     date: $("#sharedDate").value || todayStr(),
     participants,
+    tags: sharedTags,
     updatedAt: serverTimestamp(),
   };
 
@@ -626,21 +679,21 @@ $("#sharedForm").addEventListener("submit", async (e) => {
   if (id) {
     await updateDoc(docRef("shared", id), data);
     const existing = shared.find((s) => s.id === id);
-    await syncShareTxn(id, existing && existing.linkedTxnId, myShare, data.description, data.date);
+    await syncShareTxn(id, existing && existing.linkedTxnId, myShare, data.description, data.date, sharedTags);
   } else {
     data.createdAt = serverTimestamp();
     const sharedRef = await addDoc(col("shared"), data);
-    await syncShareTxn(sharedRef.id, null, myShare, data.description, data.date);
+    await syncShareTxn(sharedRef.id, null, myShare, data.description, data.date, sharedTags);
   }
   hide(sharedModal);
 });
 
 // Keep the linked "your share" expense transaction in sync with a shared expense.
-function shareTxnPayload(sharedId, myShare, description, date) {
+function shareTxnPayload(sharedId, myShare, description, date, tags) {
   return {
     amount: myShare,
     method: "",
-    tags: ["Shared"],
+    tags: (tags && tags.length) ? tags : ["Shared"],
     note: "Shared: " + (description || "expense"),
     date: date || todayStr(),
     fromShared: true,
@@ -649,7 +702,7 @@ function shareTxnPayload(sharedId, myShare, description, date) {
   };
 }
 
-async function syncShareTxn(sharedId, linkedTxnId, myShare, description, date) {
+async function syncShareTxn(sharedId, linkedTxnId, myShare, description, date, tags) {
   // No share to record -> remove any existing linked transaction.
   if (!(myShare > 0)) {
     if (linkedTxnId) {
@@ -658,7 +711,7 @@ async function syncShareTxn(sharedId, linkedTxnId, myShare, description, date) {
     }
     return;
   }
-  const payload = shareTxnPayload(sharedId, myShare, description, date);
+  const payload = shareTxnPayload(sharedId, myShare, description, date, tags);
   if (linkedTxnId) {
     try {
       await updateDoc(docRef("transactions", linkedTxnId), payload);
@@ -745,6 +798,13 @@ function escapeHtml(str) {
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
+
+// Default the date filter inputs to the current month.
+(function initMonthFilterInputs() {
+  const m = currentMonthRange();
+  $("#dateFrom").value = m.from;
+  $("#dateTo").value = m.to;
+})();
 
 // Show login by default until auth resolves; loading spinner covers the gap.
 show($("#loadingView"));
