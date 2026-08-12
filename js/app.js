@@ -38,6 +38,7 @@ let transactions = [];
 let tags = [];
 let methods = [];
 let shared = [];
+let people = [];
 let unsub = []; // firestore listener unsubscribers
 
 // Collection path helpers (per-user isolation)
@@ -222,11 +223,15 @@ function startListeners() {
     shared = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     renderShared(); renderSummary();
   }));
+  unsub.push(onSnapshot(query(col("people"), orderBy("name")), (snap) => {
+    people = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    renderPeople(); renderPeopleDatalist();
+  }));
 }
 function stopListeners() {
   unsub.forEach((fn) => { try { fn(); } catch (_) {} });
   unsub = [];
-  transactions = []; tags = []; methods = []; shared = [];
+  transactions = []; tags = []; methods = []; shared = []; people = [];
 }
 
 // ============================================================
@@ -307,6 +312,54 @@ $("#methodForm").addEventListener("submit", async (e) => {
   await addDoc(col("methods"), { name });
   $("#methodInput").value = "";
 });
+
+// ============================================================
+//  PEOPLE (settings + shared-expense autocomplete)
+// ============================================================
+$("#personForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = $("#personInput").value.trim();
+  if (!name) return;
+  if (people.some((p) => p.name.toLowerCase() === name.toLowerCase())) { $("#personInput").value = ""; return; }
+  await addDoc(col("people"), { name });
+  $("#personInput").value = "";
+});
+
+function renderPeople() {
+  const box = $("#personChips");
+  if (!box) return;
+  box.innerHTML = "";
+  if (!people.length) { box.innerHTML = '<span class="muted small">No saved people yet.</span>'; return; }
+  for (const p of people) {
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.innerHTML = `<span>${escapeHtml(p.name)}</span><span class="x" title="Delete">×</span>`;
+    chip.querySelector(".x").addEventListener("click", () => deleteDoc(docRef("people", p.id)));
+    box.appendChild(chip);
+  }
+}
+
+function renderPeopleDatalist() {
+  const dl = $("#peopleList");
+  if (!dl) return;
+  dl.innerHTML = people.map((p) => `<option value="${escapeHtml(p.name)}"></option>`).join("");
+}
+
+// Save any new participant names so they're suggested next time.
+async function rememberPeople(participants) {
+  const known = new Set(people.map((p) => p.name.toLowerCase()));
+  const seen = new Set();
+  const toAdd = [];
+  for (const p of participants) {
+    if (p.isMe) continue;
+    const nm = (p.name || "").trim();
+    const key = nm.toLowerCase();
+    if (!nm || key === "friend" || known.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    toAdd.push(nm);
+  }
+  await Promise.all(toAdd.map((nm) => addDoc(col("people"), { name: nm })));
+}
 
 function renderMethods() {
   const box = $("#methodChips");
@@ -480,7 +533,7 @@ function addParticipantRow(p = null, isMe = false) {
   const row = document.createElement("div");
   row.className = "participant-row";
   row.innerHTML = `
-    <input type="text" class="p-name" placeholder="${isMe ? "You" : "Name"}" value="${p ? escapeHtml(p.name) : (isMe ? "You" : "")}" ${isMe ? "readonly" : ""} />
+    <input type="text" class="p-name" placeholder="${isMe ? "You" : "Name"}" value="${p ? escapeHtml(p.name) : (isMe ? "You" : "")}" ${isMe ? "readonly" : 'list="peopleList" autocomplete="off"'} />
     <input type="number" class="p-share" step="0.01" min="0" placeholder="Share" value="${p ? (p.share ?? "") : ""}" />
     ${isMe ? '<span class="del" style="visibility:hidden">×</span>' : '<span class="del" title="Remove">×</span>'}`;
   row.dataset.isMe = isMe ? "1" : "0";
@@ -554,6 +607,9 @@ $("#sharedForm").addEventListener("submit", async (e) => {
     return;
   }
   setMsg($("#sharedMsg"), "");
+
+  // Remember any new friend names for future autocomplete.
+  rememberPeople(participants);
 
   const data = {
     description: $("#sharedDesc").value.trim(),

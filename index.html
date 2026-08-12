@@ -187,6 +187,14 @@
         </form>
         <div id="tagChips" class="chips"></div>
       </div>
+      <div class="settings-block">
+        <h3>People</h3>
+        <form id="personForm" class="inline-form">
+          <input type="text" id="personInput" placeholder="e.g. Darshil, Rahul" />
+          <button class="btn btn-primary" type="submit">Add</button>
+        </form>
+        <div id="personChips" class="chips"></div>
+      </div>
     </div>
 
     <!-- ===== Sticky bottom bar ===== -->
@@ -241,6 +249,7 @@
       <h3 id="sharedModalTitle">Add Shared Expense</h3>
       <form id="sharedForm" class="stack">
         <input type="hidden" id="sharedId" />
+        <datalist id="peopleList"></datalist>
         <label>Description
           <input type="text" id="sharedDesc" placeholder="e.g. Dinner at Barbeque Nation" required />
         </label>
