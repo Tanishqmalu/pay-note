@@ -144,9 +144,10 @@ label input, label select { color: var(--text); }
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 .tabs::-webkit-scrollbar { display: none; }
-.tab { white-space: nowrap; }
+.tab { white-space: nowrap; flex: 0 0 auto; }
 .tab {
   background: none; border: none; color: var(--muted);
   padding: 12px 14px; cursor: pointer; font-size: .92rem; font-weight: 600;
